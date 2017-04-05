@@ -11,12 +11,10 @@ echo "2. Cloning Dependencies..."
 git clone git@github.com:dro248/ayamelDBDockerfile
 
 git clone git@github.com:dro248/AyamelDockerfile
-cd AyamelDockerfile/
-git checkout dev
+cd AyamelDockerfile/; git checkout dev; cd ..;
 
 git clone git@github.com:dro248/runAyamel
-cd runAyamel
-git checkout dev
+cd runAyamel; git checkout dev; cd ..;
 
 # Turn off any other mysql database
 echo
