@@ -5,12 +5,18 @@ echo "1. Making Directories..."
 cd ~
 mkdir -p Docker/ && cd Docker
 
-# Clone Dockerfile directorys
+# Clone Dockerfile directories
 echo
 echo "2. Cloning Dependencies..."
 git clone git@github.com:dro248/ayamelDBDockerfile
+
 git clone git@github.com:dro248/AyamelDockerfile
+cd AyamelDockerfile/
+git checkout dev
+
 git clone git@github.com:dro248/runAyamel
+cd runAyamel
+git checkout dev
 
 # Turn off any other mysql database
 echo
