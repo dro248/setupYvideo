@@ -16,8 +16,22 @@ cd AyamelDockerfile/; git checkout dev; cd ..;
 git clone git@github.com:dro248/runAyamel
 cd runAyamel; git checkout dev;
 
+
+# Get Ayamel path dir
+read -r -p "Enter path to Ayamel (default: ~/Documents/GitHub/Ayamel):" ayameldir
+if [[ -z ayameldir ]]; then
+  ayameldir="~/Documents/GitHub/Ayamel"
+fi
+
+# Get dependencies path dir
+read -r -p "Enter path to Ayamel (default: /var/www/html):" dependenciesdir
+if [[ -z dependenciesdir ]]; then
+  dependenciesdir="/var/www/html"
+fi
+
 # Insert $USER into runAyamel/docker-compose.yml file
-replace "{{USER}}" "`echo $USER`" -- docker-compose.yml
+replace "{{APP}}" "$ayameldir" -- docker-compose.yml
+replace "{{DEPS}}" "$dependenciesdir" -- docker-compose.yml
 cd ..;
 
 
