@@ -14,7 +14,12 @@ git clone git@github.com:dro248/AyamelDockerfile
 cd AyamelDockerfile/; git checkout dev; cd ..;
 
 git clone git@github.com:dro248/runAyamel
-cd runAyamel; git checkout dev; cd ..;
+cd runAyamel; git checkout dev;
+
+# Insert $USER into runAyamel/docker-compose.yml file
+replace "{{USER}}" "`echo $USER`" -- docker-compose.yml
+cd ..;
+
 
 # Turn off any other mysql database
 echo
