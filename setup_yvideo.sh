@@ -29,14 +29,6 @@ if [[ -z $dependenciesdir ]]; then
   dependenciesdir="/var/www/html"
 fi
 
-echo "ayameldir:"
-echo $ayameldir
-echo
-echo "depdir:"
-echo $dependenciesdir
-
-exit
-
 # Insert $USER into runAyamel/docker-compose.yml file
 replace "{{APP}}" "$ayameldir" -- docker-compose.yml
 replace "{{DEPS}}" "$dependenciesdir" -- docker-compose.yml
