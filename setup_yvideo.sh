@@ -45,7 +45,7 @@ for repo in "${repos[@]}"; do
     fi
     echo "Using $user_dir for $repo."
     echo
-    sed -i "s_"{{$repo}}"_"$user_dir"_"  docker-compose.yml
+    sed -i.bkp "s_"{{$repo}}"_"$user_dir"_"  docker-compose.yml
 done
 
 cd ..
