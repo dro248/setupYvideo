@@ -44,7 +44,8 @@ for repo in "${repos[@]}"; do
         fi
     fi
     echo "Using $user_dir for $repo."
-    replace "{{$user_dir}}" "$dependenciesdir" -- docker-compose.yml
+    echo
+    sed -i "s_"{{$repo}}"_"$user_dir"_"  docker-compose.yml
 done
 
 cd ..
@@ -59,3 +60,4 @@ echo
 echo "5. Creating Database & App..."
 cd runAyamel
 sudo docker-compose up
+
