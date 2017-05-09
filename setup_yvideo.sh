@@ -12,7 +12,7 @@ repos=(Ayamel Ayamel.js EditorWidgets subtitle-timeline-editor TimedText)
 usage () {
     echo 'Optional Params:'
     echo
-    echo '  [--default | -d]        Accept the default repository locations '
+    echo '  [--default | -e]        Accept the default repository locations '
     echo "                          Used for: ${repos[@]}"
     echo '                          (default is $GITDIR or ~/Documents/GitHub for everything)'
     echo '  [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes)'
@@ -27,7 +27,7 @@ usage () {
 }
 
 # Optional Params
-#   [--default | -d]        Accept the default repository locations 
+#   [--default | -e]        Accept the default repository locations 
 #                           (default is $GITDIR or ~/Documents/GitHub for everything)
 #   [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes to it
 # Required (One of the following. The last given option will be used)
