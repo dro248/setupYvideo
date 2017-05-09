@@ -7,16 +7,33 @@ compose_override_file=""
 dev_compose_file="docker-compose.dev.yml"
 production_compose_file="docker-compose.production.yml"
 test_compose_file="docker-compose.test.yml"
+repos=(Ayamel Ayamel.js EditorWidgets subtitle-timeline-editor TimedText)
 
-dirname () { 
-    test -n "$1" || return 0
-    local x="$1"; while :; do case "$x" in */) x="${x%?}";; *) break;; esac; done
-    [ -n "$x" ] || { echo /; return; }
-    set -- "$x"; x="${1%/*}"
-    case "$x" in "$1") x=.;; "") x=/;; esac
-    printf '%s\n' "$x"
+usage () {
+    echo 'Optional Params:'
+    echo
+    echo '  [--default | -d]        Accept the default repository locations '
+    echo "                          Used for: ${repos[@]}"
+    echo '                          (default is $GITDIR or ~/Documents/GitHub for everything)'
+    echo '  [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes)'
+    echo '  [--help        | -h]    Show this dialog'
+    echo
+    echo
+    echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
+    echo
+    echo '  [--production  | -p]    Use the production docker-compose override file.'
+    echo '  [--dev         | -d]    Use the development docker-compose override file.'
+    echo '  [--test        | -t]    Use the testing docker-compose override file.'
 }
 
+# Optional Params
+#   [--default | -d]        Accept the default repository locations 
+#                           (default is $GITDIR or ~/Documents/GitHub for everything)
+#   [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes to it
+# Required (One of the following. The last given option will be used)
+#   [--production  | -p]    Use the production docker-compose override file.
+#   [--dev         | -d]    Use the development docker-compose override file.
+#   [--test        | -t]    Use the testing docker-compose override file.
 options () {
     for opt in "$@"; do
         if [[ "$opt" = "--default" ]] || [[ "$opt" = "-e" ]]; then
@@ -29,18 +46,20 @@ options () {
             compose_override_file="$production_compose_file"
         elif [[ "$opt" = "--test" ]] || [[ "$opt" = "-t" ]]; then
             compose_override_file="$test_compose_file"
+        elif [[ "$opt" = "--help" ]] || [[ "$opt" = "-h" ]]; then
+            usage && exit
         fi
     done
 }
 
 compose_dev () {
-    repos=(Ayamel Ayamel.js EditorWidgets subtitle-timeline-editor TimedText)
-
     # setting up volumes
     for repo in "${repos[@]}"; do
         echo "repo: $repo"
         if [[ -z "$default" ]]; then
             read -r -p "Enter path to $repo (default: ${dir_name:-$git_dir}/$repo): " user_dir
+        else
+            user_dir=""
         fi
         if [[ -z "$user_dir" ]]; then
             echo "repo: $repo"
