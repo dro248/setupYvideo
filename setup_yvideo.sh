@@ -79,6 +79,14 @@ compose_dev () {
     done
 }
 
+compose_test () {
+    echo "Compose Test Not Implemented"
+}
+
+compose_production () {
+    echo "Compose Production Not Implemented"
+}
+
 setup () {
     # Create Docker directory (if doesn't exist)
     echo "1. Making Directories..."
