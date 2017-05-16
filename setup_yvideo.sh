@@ -128,7 +128,7 @@ setup () {
     fi
 
     git clone https://github.com/dro248/runAyamel &> /dev/null
-    cd runAyamel; git checkout dev &> /dev/null
+    cd runAyamel
 
     if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
         compose_dev
