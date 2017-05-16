@@ -8,6 +8,11 @@ dev_compose_file="docker-compose.dev.yml"
 production_compose_file="docker-compose.production.yml"
 test_compose_file="docker-compose.test.yml"
 repos=(Ayamel Ayamel.js EditorWidgets subtitle-timeline-editor TimedText)
+remotes=(https://github.com/byu-odh/Ayamel.js
+        https://github.com/byu-odh/Ayamel
+        https://github.com/byu-odh/EditorWidgets
+        https://github.com/byu-odh/subtitle-timeline-editor
+        https://github.com/byu-odh/TimedText)
 
 usage () {
     echo 'Optional Params:'
@@ -80,11 +85,15 @@ compose_dev () {
 }
 
 compose_test () {
-    echo "Compose Test Not Implemented"
+    # clone the dependencies
+    for repo in "${remotes[@]}"; do
+        git clone "$repo" &> /dev/null
+    done
 }
 
 compose_production () {
     echo "Compose Production Not Implemented"
+    exit
 }
 
 setup () {
@@ -135,5 +144,5 @@ fi
 # Run docker-compose file (within runAyamel directory)
 echo
 echo "5. Creating Database & App..."
-sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up
+sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up -d
 
