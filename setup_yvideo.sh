@@ -7,9 +7,9 @@ compose_override_file=""
 dev_compose_file="docker-compose.dev.yml"
 production_compose_file="docker-compose.production.yml"
 test_compose_file="docker-compose.test.yml"
+ayamel_dir=""
 repos=(Ayamel Ayamel.js EditorWidgets subtitle-timeline-editor TimedText)
-remotes=(https://github.com/byu-odh/Ayamel.js
-        https://github.com/byu-odh/Ayamel
+remotes=(https://github.com/byu-odh/Ayamel
         https://github.com/byu-odh/EditorWidgets
         https://github.com/byu-odh/subtitle-timeline-editor
         https://github.com/byu-odh/TimedText)
@@ -104,18 +104,29 @@ compose_production () {
     exit
 }
 
-setup () {
-    # Create Docker directory (if doesn't exist)
-    echo "1. Making Directories..."
-    if [[ -z "$GITDIR" ]]; then
-        mkdir -p ~/Docker && cd ~/Docker
-    else
-        cd $GITDIR
-    fi
+# @param 1 whether we are going to run tests
+# Clone Dockerfile directories
+clone_docker_repo () {
 
-    # Clone Dockerfile directories
+    # path of this script
+    scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
+
+    if [[ -z "$1" ]]; then
+        if [[ -z "$GITDIR" ]]; then
+            mkdir -p ~/Docker && cd ~/Docker
+        else
+            cd "$GITDIR"
+        fi
+    else
+        # go into the folder where travis cloned ayamel
+        # this script is in Ayamel/setup/setupYvideo when set up by travis
+        # so we go back two directories
+        echo "Travis Mode."
+        ayamel_dir="$( cd "$scriptpath"; cd ../../; pwd -P )"
+        cd "$ayamel_dir"
+    fi
     echo
-    echo "2. Cloning Dependencies..."
+    echo "Cloning Dependencies..."
 
     if [[ -n "$force_clone" ]]; then
         if [[ -d runAyamel ]]; then
@@ -129,12 +140,17 @@ setup () {
 
     git clone https://github.com/dro248/runAyamel &> /dev/null
     cd runAyamel
+}
 
+setup () {
     if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
+        clone_docker_repo
         compose_dev
     elif [[ "$compose_override_file" = "$production_compose_file" ]]; then
+        clone_docker_repo
         compose_production
     elif [[ "$compose_override_file" = "$test_compose_file" ]]; then
+        clone_docker_repo true
         compose_test
     fi
 }
@@ -145,12 +161,12 @@ setup
 # Turn off any other mysql database
 if [[ -n $(pgrep mysql) ]]; then
     echo
-    echo "4. Making space for database..."
+    echo "Making space for database..."
     sudo service mysql stop
 fi
 
 # Run docker-compose file (within runAyamel directory)
 echo
-echo "5. Creating Database & App..."
+echo "Creating Database & App..."
 sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up -d
 
