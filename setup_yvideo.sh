@@ -17,7 +17,7 @@ remotes=(https://github.com/byu-odh/Ayamel.js
 usage () {
     echo 'Optional Params:'
     echo
-    echo '  [--default | -e]        Accept the default repository locations '
+    echo '  [--default     | -e]    Accept the default repository locations '
     echo "                          Used for: ${repos[@]}"
     echo '                          (default is $GITDIR or ~/Documents/GitHub for everything)'
     echo '  [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes)'
@@ -55,6 +55,14 @@ options () {
             usage && exit
         fi
     done
+
+    if [[ -z "$compose_override_file" ]]; then
+        echo "[Error]: No mode specified"
+        echo
+        usage
+        exit 1
+    fi
+
 }
 
 compose_dev () {
