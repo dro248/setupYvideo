@@ -2,12 +2,15 @@
 
 default=""
 force_clone=""
+attach=""
+travis=""
+test_local=""
+ayamel_dir=""
 git_dir=${GITDIR:-~/Documents/GitHub}
 compose_override_file=""
 dev_compose_file="docker-compose.dev.yml"
 production_compose_file="docker-compose.production.yml"
 test_compose_file="docker-compose.test.yml"
-ayamel_dir=""
 repos=(Ayamel Ayamel.js EditorWidgets subtitle-timeline-editor TimedText)
 remotes=(https://github.com/byu-odh/Ayamel
         https://github.com/byu-odh/EditorWidgets
@@ -22,23 +25,19 @@ usage () {
     echo '                          (default is $GITDIR or ~/Documents/GitHub for everything)'
     echo '  [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes)'
     echo '  [--help        | -h]    Show this dialog'
+    echo '  [--attach      | -a]    Attach to the yvideo container'
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
     echo
     echo '  [--production  | -p]    Use the production docker-compose override file.'
     echo '  [--dev         | -d]    Use the development docker-compose override file.'
-    echo '  [--test        | -t]    Use the testing docker-compose override file.'
+    echo '  [--test        | -t]    Use the dev docker-compose override file.'
+    echo '                          Use volumes and run tests locally'
+    echo '  [--tavis           ]    Use the testing docker-compose override file.'
+    echo '                          Travis specific setup'
 }
 
-# Optional Params
-#   [--default | -e]        Accept the default repository locations 
-#                           (default is $GITDIR or ~/Documents/GitHub for everything)
-#   [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes to it
-# Required (One of the following. The last given option will be used)
-#   [--production  | -p]    Use the production docker-compose override file.
-#   [--dev         | -d]    Use the development docker-compose override file.
-#   [--test        | -t]    Use the testing docker-compose override file.
 options () {
     for opt in "$@"; do
         if [[ "$opt" = "--default" ]] || [[ "$opt" = "-e" ]]; then
@@ -49,10 +48,16 @@ options () {
             compose_override_file="$dev_compose_file"
         elif [[ "$opt" = "--production" ]] || [[ "$opt" = "-p" ]]; then
             compose_override_file="$production_compose_file"
-        elif [[ "$opt" = "--test" ]] || [[ "$opt" = "-t" ]]; then
+        elif [[ "$opt" = "--travis" ]]; then
             compose_override_file="$test_compose_file"
+            travis=true
+        elif [[ "$opt" = "--test" ]] || [[ "$opt" = "-t" ]]; then
+            compose_override_file="$dev_compose_file"
+            test_local=true
         elif [[ "$opt" = "--help" ]] || [[ "$opt" = "-h" ]]; then
             usage && exit
+        elif [[ "$opt" = "--attach" ]] || [[ "$opt" = "-a" ]]; then
+            attach=true
         fi
     done
 
@@ -90,6 +95,13 @@ compose_dev () {
         echo "Using $user_dir for $repo."
         sed -i.bkp "s_"{{$repo}}"_"$user_dir"_" docker-compose.dev.yml
     done
+
+    # set command which will run in the container
+    if [[ -n "$test_local" ]]; then
+       sed -i.bkp 's/\["sbt", "run"\]/\["sbt", "test"\]/' docker-compose.dev.yml
+    else
+       sed -i.bkp 's/\["sbt", "test"\]/\["sbt", "run"\]/' docker-compose.dev.yml
+    fi
 }
 
 compose_test () {
@@ -104,14 +116,14 @@ compose_production () {
     exit
 }
 
-# @param 1 whether we are going to run tests
 # Clone Dockerfile directories
 clone_docker_repo () {
 
     # path of this script
     scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 
-    if [[ -z "$1" ]]; then
+    # check whether we are running in travis
+    if [[ -z "$travis" ]]; then
         if [[ -z "$GITDIR" ]]; then
             mkdir -p ~/Docker && cd ~/Docker
         else
@@ -143,14 +155,13 @@ clone_docker_repo () {
 }
 
 setup () {
+    clone_docker_repo
+        
     if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
-        clone_docker_repo
         compose_dev
     elif [[ "$compose_override_file" = "$production_compose_file" ]]; then
-        clone_docker_repo
         compose_production
     elif [[ "$compose_override_file" = "$test_compose_file" ]]; then
-        clone_docker_repo true
         compose_test
     fi
 }
@@ -169,4 +180,5 @@ fi
 echo
 echo "Creating Database & App..."
 sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up -d
+[[ -n "$attach" ]] && sudo docker attach runayamel_yvideo_1
 
