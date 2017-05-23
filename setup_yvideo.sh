@@ -73,14 +73,12 @@ options () {
 compose_dev () {
     # setting up volumes
     for repo in "${repos[@]}"; do
-        echo "repo: $repo"
         if [[ -z "$default" ]]; then
             read -r -p "Enter path to $repo (default: ${dir_name:-$git_dir}/$repo): " user_dir
         else
             user_dir=""
         fi
         if [[ -z "$user_dir" ]]; then
-            echo "repo: $repo"
             user_dir="$git_dir/$repo"
         else
             # expand the path
