@@ -3,16 +3,21 @@
 default=""
 force_clone=""
 attach=""
+remove=""
 travis=""
 test_local=""
 ayamel_dir=""
+project_name="runayamel"
 git_dir=${GITDIR:-~/Documents/GitHub}
 compose_override_file=""
 dev_compose_file="docker-compose.dev.yml"
 production_compose_file="docker-compose.production.yml"
 test_compose_file="docker-compose.test.yml"
-repos=(Ayamel Ayamel.js EditorWidgets subtitle-timeline-editor TimedText)
+
+declare -A repos # Associative array! :) used in the compose_dev function
+repos=([Ayamel]="" [Ayamel.js]="" [EditorWidgets]="" [subtitle-timeline-editor]="" [TimedText]="")
 remotes=(https://github.com/byu-odh/Ayamel
+        https://github.com/byu-odh/Ayamel.js
         https://github.com/byu-odh/EditorWidgets
         https://github.com/byu-odh/subtitle-timeline-editor
         https://github.com/byu-odh/TimedText)
@@ -23,9 +28,13 @@ usage () {
     echo '  [--default     | -e]    Accept the default repository locations '
     echo "                          Used for: ${repos[@]}"
     echo '                          (default is $GITDIR or ~/Documents/GitHub for everything)'
-    echo '  [--force-clone | -f]    Overwrite the yvideo docker repository (you will lose changes)'
+    echo '                          Only used with --test and --dev'
+    echo '  [--force-clone | -f]    Overwrite the dockerfile repository dro248/runAyamel (you will lose changes)'
     echo '  [--help        | -h]    Show this dialog'
-    echo '  [--attach      | -a]    Attach to the yvideo container'
+    echo '  [--attach      | -a]    Attach to the yvideo container after starting it'
+    echo '                          The containers will be run in the background unless attach is specified'
+    echo "  [--remove      | -r]    Removes all of the containers that start with the project prefix: $project_name"
+    echo '                          Containers are removed before anything else is done.'
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
@@ -40,39 +49,63 @@ usage () {
 
 options () {
     for opt in "$@"; do
-        if [[ "$opt" = "--default" ]] || [[ "$opt" = "-e" ]]; then
+        if [[ "$opt" = "--default" ]] || [[ "$opt" = "-e" ]];
+        then
             default="true"
-        elif [[ "$opt" = "--force-clone" ]] || [[ "$opt" = "-f" ]]; then
+
+        elif [[ "$opt" = "--force-clone" ]] || [[ "$opt" = "-f" ]];
+        then
             force_clone="true"
-        elif [[ "$opt" = "--dev" ]] || [[ "$opt" = "-d" ]]; then
+
+        elif [[ "$opt" = "--dev" ]] || [[ "$opt" = "-d" ]];
+        then
             compose_override_file="$dev_compose_file"
-        elif [[ "$opt" = "--production" ]] || [[ "$opt" = "-p" ]]; then
+
+        elif [[ "$opt" = "--production" ]] || [[ "$opt" = "-p" ]];
+        then
             compose_override_file="$production_compose_file"
-        elif [[ "$opt" = "--travis" ]]; then
+
+        elif [[ "$opt" = "--travis" ]];
+        then
             compose_override_file="$test_compose_file"
             travis=true
-        elif [[ "$opt" = "--test" ]] || [[ "$opt" = "-t" ]]; then
+
+        elif [[ "$opt" = "--test" ]] || [[ "$opt" = "-t" ]];
+        then
             compose_override_file="$dev_compose_file"
             test_local=true
-        elif [[ "$opt" = "--help" ]] || [[ "$opt" = "-h" ]]; then
+
+        elif [[ "$opt" = "--help" ]] || [[ "$opt" = "-h" ]];
+        then
             usage && exit
-        elif [[ "$opt" = "--attach" ]] || [[ "$opt" = "-a" ]]; then
+
+        elif [[ "$opt" = "--attach" ]] || [[ "$opt" = "-a" ]];
+        then
             attach=true
+
+        elif [[ "$opt" = "--remove" ]] || [[ "$opt" = "-r" ]];
+        then
+            remove=true
         fi
     done
 
-    if [[ -z "$compose_override_file" ]]; then
+    if [[ -z "$compose_override_file" ]] && [[ -z "$remove" ]]; then
         echo "[Error]: No mode specified"
         echo
         usage
         exit 1
     fi
+}
 
+remove_containers () {
+    # remove all of the containers that start with runayamel_
+    sudo docker rm -f `sudo docker ps -aq -f name=${project_name}_*` 
 }
 
 compose_dev () {
     # setting up volumes
-    for repo in "${repos[@]}"; do
+    # loop over the keys of the repos associative array
+    for repo in "${!repos[@]}"; do
         if [[ -z "$default" ]]; then
             read -r -p "Enter path to $repo (default: ${dir_name:-$git_dir}/$repo): " user_dir
         else
@@ -91,36 +124,52 @@ compose_dev () {
             fi
         fi
         echo "Using $user_dir for $repo."
-        sed -i.bkp "s_"{{$repo}}"_"$user_dir"_" docker-compose.dev.yml
+        repos["$repo"]="$user_dir"
     done
 
     # set command which will run in the container
+    # dev and test use the same dockerfile
     if [[ -n "$test_local" ]]; then
-       sed -i.bkp 's/\["sbt", "run"\]/\["sbt", "test"\]/' docker-compose.dev.yml
+        dev_command="test"
     else
-       sed -i.bkp 's/\["sbt", "test"\]/\["sbt", "run"\]/' docker-compose.dev.yml
+        dev_command="run"
     fi
+    export dev_command
+    export Ayamel="${repos[Ayamel]}"
+    export Ayamel_js="${repos[Ayamel.js]}"
+    export subtitle_timeline_editor="${repos[subtitle-timeline-editor]}"
+    export EditorWidgets="${repos[EditorWidgets]}"
+    export TimedText="${repos[TimedText]}"
+    substitute_environment_variables "dev"
 }
 
 compose_test () {
     # clone the dependencies
     for repo in "${remotes[@]}"; do
-        git clone "$repo" &> /dev/null
+        git clone "$repo" yvideo_dev/$(basename $repo) &> /dev/null
     done
 }
 
 compose_production () {
-    echo "Compose Production Not Implemented"
-    exit
+    for repo in "${remotes[@]}"; do
+        git clone -b master --single-branch "$repo" yvideo_prod/$(basename $repo) &> /dev/null
+    done
 }
 
-# Clone Dockerfile directories
+# arg 1 is one of [ production, dev, test ]
+# and corresponds to the docker-compose template we want to fill out
+# with environment variables
+substitute_environment_variables () {
+    echo "Substituting Environment variables for template.$1.yml"
+    cat "template.$1.yml" | envsubst > "$compose_override_file"
+}
+
 clone_docker_repo () {
 
     # path of this script
     scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 
-    # check whether we are running in travis
+    # check whether we are running in Travis CI
     if [[ -z "$travis" ]]; then
         if [[ -z "$GITDIR" ]]; then
             mkdir -p ~/Docker && cd ~/Docker
@@ -131,13 +180,13 @@ clone_docker_repo () {
         # go into the folder where travis cloned ayamel
         # this script is in Ayamel/setup/setupYvideo when set up by travis
         # so we go back two directories
-        echo "Travis Mode."
         ayamel_dir="$( cd "$scriptpath"; cd ../../; pwd -P )"
         cd "$ayamel_dir"
     fi
     echo
     echo "Cloning Dependencies..."
 
+    # overwrite the docker directory if force is specified
     if [[ -n "$force_clone" ]]; then
         if [[ -d runAyamel ]]; then
             # TODO: check for changes
@@ -153,11 +202,29 @@ clone_docker_repo () {
 }
 
 setup () {
+    if [[ -n "$remove" ]]; then
+        remove_containers
+    fi
     clone_docker_repo
         
     if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
         compose_dev
     elif [[ "$compose_override_file" = "$production_compose_file" ]]; then
+        # copy the application.conf file into the context of the dockerfile
+        # Needs to be copied because:
+        # The <src> path must be inside the context of the build;
+        # you cannot COPY ../something /something, because the first step of a docker build
+        # is to send the context directory (and subdirectories) to the docker daemon.
+        # https://docs.docker.com/engine/reference/builder/#copy
+        if [[ -f "$YVIDEO_CONFIG" ]]; then
+            # copy it into the production dockerfile folder
+            cp "$YVIDEO_CONFIG" yvideo_prod
+        else
+            echo "[$YVIDEO_CONFIG] does not exist."
+            echo "The environment variable YVIDEO_CONFIG needs to be exported to this script in order to run yvideo in production mode."
+            exit
+        fi
+
         compose_production
     elif [[ "$compose_override_file" = "$test_compose_file" ]]; then
         compose_test
