@@ -146,14 +146,14 @@ compose_dev () {
 compose_test () {
     # clone the dependencies
     for repo in "${remotes[@]}"; do
-        git clone "$repo" yvideo_dev/$(basename $repo) &> /dev/null
+        git clone "$repo" dev/$(basename $repo) &> /dev/null
     done
 }
 
 compose_production () {
     # TODO: get the correct copy of the ayamel sql file for production
     for repo in "${remotes[@]}"; do
-        git clone -b master --single-branch "$repo" yvideo_prod/$(basename $repo) &> /dev/null
+        git clone -b master --single-branch "$repo" production/$(basename $repo) &> /dev/null
     done
 }
 
@@ -202,7 +202,7 @@ clone_docker_repo () {
 }
 
 prod_cleanup () {
-    cd yvideo_prod
+    cd production
     rm -rf "${!repos[@]}"
     rm -f application.conf
     cd ../
@@ -237,7 +237,7 @@ setup () {
         # https://docs.docker.com/engine/reference/builder/#copy
         if [[ -f "$YVIDEO_CONFIG" ]]; then
             # copy it into the production dockerfile folder
-            cp "$YVIDEO_CONFIG" yvideo_prod
+            cp "$YVIDEO_CONFIG" production
         else
             echo "[$YVIDEO_CONFIG] does not exist."
             echo "The environment variable YVIDEO_CONFIG needs to be exported to this script in order to run yvideo in production mode."
