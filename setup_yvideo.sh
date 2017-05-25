@@ -232,6 +232,12 @@ setup () {
         remove_containers
     fi
     clone_docker_repo
+
+    # Turn off any other mysql database
+    if [[ -n $(pgrep mysql) ]]; then
+        echo "Making space for database..."
+        sudo service mysql stop
+    fi
         
     if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
         compose_dev
@@ -254,12 +260,6 @@ setup () {
         compose_production
     elif [[ "$compose_override_file" = "$test_compose_file" ]]; then
         compose_test
-    fi
-
-    # Turn off any other mysql database
-    if [[ -n $(pgrep mysql) ]]; then
-        echo "Making space for database..."
-        sudo service mysql stop
     fi
 }
 
