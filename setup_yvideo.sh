@@ -4,6 +4,7 @@ default=""
 force_clone=""
 attach=""
 remove=""
+clean=""
 travis=""
 test_local=""
 ayamel_dir=""
@@ -35,6 +36,9 @@ usage () {
     echo '                          The containers will be run in the background unless attach is specified'
     echo "  [--remove      | -r]    Removes all of the containers that start with the project prefix: $project_name"
     echo '                          Containers are removed before anything else is done.'
+    echo "  [--clean       | -c]    Remove all of the created files in the runAyamel directory."
+    echo '                          Cleanup is run before any other setup.'
+    echo '                          This option can be used without one of the required params.'
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
@@ -86,10 +90,13 @@ options () {
         elif [[ "$opt" = "--remove" ]] || [[ "$opt" = "-r" ]];
         then
             remove=true
+        elif [[ "$opt" = "--clean" ]] || [[ "$opt" = "-c" ]];
+        then
+            clean=true
         fi
     done
 
-    if [[ -z "$compose_override_file" ]] && [[ -z "$remove" ]]; then
+    if [[ -z "$compose_override_file" ]] && [[ -z "$remove" ]] && [[ -z "$clean" ]]; then
         echo "[Error]: No mode specified"
         echo
         usage
@@ -248,19 +255,22 @@ setup () {
     elif [[ "$compose_override_file" = "$test_compose_file" ]]; then
         compose_test
     fi
+
+    # Turn off any other mysql database
+    if [[ -n $(pgrep mysql) ]]; then
+        echo "Making space for database..."
+        sudo service mysql stop
+    fi
+}
+
+run_docker_compose () {
+    # Run docker-compose file (within runAyamel directory)
+    echo "Creating Database & App..."
+    sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up -d
+    [[ -n "$attach" ]] && sudo docker attach runayamel_yvideo_1
 }
 
 options "$@"
-setup
-
-# Turn off any other mysql database
-if [[ -n $(pgrep mysql) ]]; then
-    echo "Making space for database..."
-    sudo service mysql stop
-fi
-
-# Run docker-compose file (within runAyamel directory)
-echo "Creating Database & App..."
-sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up -d
-[[ -n "$attach" ]] && sudo docker attach runayamel_yvideo_1
+[[ -n "$compose_override_file" ]] && setup && run_docker_compose
+[[ -n "$clean" ]]                 && cleanup
 
