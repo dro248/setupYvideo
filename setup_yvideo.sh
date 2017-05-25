@@ -1,4 +1,4 @@
-#!/bin/bash
+#o/bin/bash
 
 default=""
 force_clone=""
@@ -26,7 +26,7 @@ usage () {
     echo 'Optional Params:'
     echo
     echo '  [--default     | -e]    Accept the default repository locations '
-    echo "                          Used for: ${repos[@]}"
+    echo "                          Used for: ${!repos[@]}"
     echo '                          (default is $GITDIR or ~/Documents/GitHub for everything)'
     echo '                          Only used with --test and --dev'
     echo '  [--force-clone | -f]    Overwrite the dockerfile repository dro248/runAyamel (you will lose changes)'
@@ -151,6 +151,7 @@ compose_test () {
 }
 
 compose_production () {
+    # TODO: get the correct copy of the ayamel sql file for production
     for repo in "${remotes[@]}"; do
         git clone -b master --single-branch "$repo" yvideo_prod/$(basename $repo) &> /dev/null
     done
@@ -183,7 +184,6 @@ clone_docker_repo () {
         ayamel_dir="$( cd "$scriptpath"; cd ../../; pwd -P )"
         cd "$ayamel_dir"
     fi
-    echo
     echo "Cloning Dependencies..."
 
     # overwrite the docker directory if force is specified
@@ -199,6 +199,25 @@ clone_docker_repo () {
 
     git clone https://github.com/dro248/runAyamel &> /dev/null
     cd runAyamel
+}
+
+prod_cleanup () {
+    cd yvideo_prod
+    rm -rf "${!repos[@]}"
+    rm -f application.conf
+    cd ../
+}
+
+dev_cleanup () {
+    # This file is the one with the volumes filled in by envsubst
+    # so we get rid of the filled out version here
+    rm -f docker-compose.dev.yml
+}
+
+cleanup () {
+    echo "Cleanup..."
+    prod_cleanup
+    dev_cleanup
 }
 
 setup () {
@@ -236,13 +255,11 @@ setup
 
 # Turn off any other mysql database
 if [[ -n $(pgrep mysql) ]]; then
-    echo
     echo "Making space for database..."
     sudo service mysql stop
 fi
 
 # Run docker-compose file (within runAyamel directory)
-echo
 echo "Creating Database & App..."
 sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up -d
 [[ -n "$attach" ]] && sudo docker attach runayamel_yvideo_1
